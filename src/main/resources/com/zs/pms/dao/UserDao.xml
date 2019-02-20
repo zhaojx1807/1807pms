@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 参数DAO借口，做DAO实现 -->
+<mapper namespace="com.zs.pms.dao.UserDao">
+
+<resultMap type="TUser" id="usermap">
+	<id property="id" column="id"/>
+	<association property="dept" column="dept" select="getDep"/>
+</resultMap>
+<select id="getDep" parameterType="int" resultType="TDep">
+	select * from tdep where id=#{dept}
+</select>
+
+<!-- 参数是用户id -->
+	<select id="queryByUid" parameterType="int"
+		resultType="TPermission">
+		select * from tpermission where id in(
+		select pid from
+		trolepermission where rid in (
+		select rid from tuserrole where
+		usid=#{id}))
+	</select>
+	<sql id="userWhere">
+		<where>
+			<!-- 判断： 如果登录名不为空，或不为空字符串 -->
+			<if test="loginname!=null and loginname!=''">
+				and loginname=#{loginname}
+			</if>
+			<!-- 判断： 如果登录名不为空，或不为空字符串 -->
+			<if test="password!=null and password!=''">
+				and password=#{password}
+			</if>
+			<!-- 判断： 如果登录名不为空，或不为空字符串 -->
+			<if test="sex!=null and sex!=''">
+				and sex=#{sex}
+			</if>
+			<if test="isenabled!=0">
+				and isenabled=#{isenabled}
+			</if>
+		</where>
+	</sql>
+<!-- 查询一条 -->
+	<select id="queryById" parameterType="int" resultMap="usermap">
+		select * from tuser where id=#{id}
+	</select>
+	<!-- 根据条件查询用户 -->
+	<select id="queryByCon" parameterType="QueryUser"
+		resultType="TUser">
+		select * from tuser
+		<!--引入sql片段，refid：sql的id， -->
+		<include refid="userWhere" />
+	</select>
+
+	<!-- 删除一条 -->
+	<delete id="deleteUserById">
+		delete from tuser where id=#{id}
+	</delete>
+
+	<!-- 批量删除 -->
+	<delete id="deleteUserByIds">
+		delete from tuser where id in
+		<!-- 循环ids(x,x,x) -->
+		<!-- collection:参数的类型 array:数组 item:数组中每项的临时变量名 separator:每项用什么分隔 open:起始 
+			close:结束 -->
+		<foreach collection="array" item="id" separator="," open="("
+			close=")">
+			#{id}
+		</foreach>
+	</delete>
+
+	<!-- 修改 -->
+	<update id="updateUser" parameterType="TUser">
+		update tuser
+		<!-- 修改一条 -->
+		<set>
+			<if test="loginname!=null and loginname!=''">
+				loginname=#{loginname},
+			</if>
+			<if test="password!=null and password!=''">
+				password=#{password},
+			</if>
+			<if test="sex!=null and sex!=''">
+				sex=#{sex},
+			</if>
+			<if test="birthday!=null">
+				birthday=#{birthday},
+			</if>
+			<if test="email!=null and email!=''">
+				email=#{email},
+			</if>
+			<if test="dept!=null">
+				dept=#{dept.id},
+			</if>
+			<if test="realname!=null and realname!=''">
+				realname=#{realname},
+			</if>
+			<if test="updator!=0">
+				updator=#{updator},
+			</if>
+			updatime=sysdate,
+			<if test="isenabled!=0">
+				isenabled=#{isenabled},
+			</if>
+
+		</set>
+		where id=#{id}
+	</update>
+	<!-- 用户新增 返回主键id -->
+	<insert id="insertUser" parameterType="TUser">
+		<!-- 主键采用序列 keyProperty: 属性 order：生成顺序 resultType：返回类型，返回id是int类型 -->
+		<selectKey keyProperty="id" order="BEFORE" resultType="int">
+			select aeq_tuser.nextval from dual
+		</selectKey>
+		insert into
+		tuser(id,loginname,password,sex,birthday,email,dept,realname,creator,creatime,isenabled)
+		values(#{id},#{loginname},#{password},#{sex},#{birthday},#{email},#{dept.id},#{realname},#{creator},sysdate,#{isenabled})
+	</insert>
+	<!-- 分页查询 -->
+	<!--选择的列：就是指查询的内容 -->
+	<sql id="selector">
+		select * from tuser
+	</sql>
+	<!-- 排序 -->
+	<sql id="order">
+		order by id desc
+	</sql>
+	<!-- 分页 大于号：转译符&gt; 小于号 -转译符&lt; -->
+	<sql id="page">
+		<where>
+			b.rn&gt;=#{start} and b.rn&lt;=#{end}
+		</where>
+	</sql>
+	<!-- 分页查询 -->
+	<select id="queryByPage" parameterType="QueryUser"
+		resultMap="usermap">
+		select b.* from (select rownum rn,a.* from
+		(
+		<include refid="selector" /><!-- 查询的列 -->
+		<include refid="userWhere" /><!-- 查询条件 -->
+		<include refid="order" /><!-- 排序 -->
+		) a) b
+		<include refid="page" /><!--分页  -->
+	</select>
+	
+	<!-- 获得总条数 -->
+	<select id="queryCount" parameterType="QueryUser" resultType="int">
+	select count(1) from tuser
+	<include refid="userWhere"/><!-- 复用 -->
+	</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</mapper>
